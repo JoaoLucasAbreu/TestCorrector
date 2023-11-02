@@ -3,12 +3,11 @@
 namespace Projeto {
 	class Program {
 		static void Main(string[] args) {
-			using (
-				SKBitmap bitmapEntrada = SKBitmap.Decode("C:\\Users\\joaol\\Documents\\GitHub\\TestCorrector\\img\\Gabarito Correto 1.png"),
-				bitmapSaida = new SKBitmap(new SKImageInfo(bitmapEntrada.Width, bitmapEntrada.Height, SKColorType.Gray8))) {
+			List<(int x0, int y0 , int x1 ,int y1, int number, string answer)> slotsAlternativas = new List<(int x0, int y0 , int x1 ,int y1, int number, string answer)>();
 
-				Console.WriteLine(bitmapEntrada.ColorType);
-				Console.WriteLine(bitmapSaida.ColorType);
+			using (
+				SKBitmap bitmapEntrada = SKBitmap.Decode("img\\raw\\Gabarito Correto 1.png"),
+				bitmapSaida = new SKBitmap(new SKImageInfo(bitmapEntrada.Width, bitmapEntrada.Height, SKColorType.Gray8))) {
 
 				unsafe {
 					byte* entrada = (byte*)bitmapEntrada.GetPixels();
@@ -24,6 +23,7 @@ namespace Projeto {
 					}
 
 					media = (byte)(media / pixelsTotais);
+
 					// Limiarização
 					for(int p = 0; p < pixelsTotais; p++)
 					{
@@ -35,29 +35,121 @@ namespace Projeto {
 
 					// Erosão
 					Erodir(saida, bitmapSaida.Width, bitmapSaida.Height, 7, entrada);
-
-					// Reconhecimento de formas e floodfill
-					
-
-
-
-
-
-					// int tamanhoJanela = 1;
-					// int metadeJanela = tamanhoJanela / 2;
-					// entrada = (byte*)bitmapSaida.GetPixels();
-					// for(int y = 0; y < bitmapSaida.Height; y++)
-					// {
-					// 	for(int x = 0; x < bitmapSaida.Width; x++)
-					// 	{
-					// 		int i = (y * bitmapEntrada.Width) + x;
-					// 		saida[i] = Erodir1(entrada, bitmapEntrada.Width, bitmapSaida.Height, x, y, metadeJanela);
-					// 	}
-					// }
 				}
 
-				using (FileStream stream = new FileStream("C:\\Users\\joaol\\Documents\\GitHub\\TestCorrector\\img\\Gabarito Correto Out 1.png", FileMode.OpenOrCreate, FileAccess.Write)) {
+				using (FileStream stream = new FileStream("img\\erosed\\Gabarito Correto Erosed 1.png", FileMode.OpenOrCreate, FileAccess.Write)) {
 					bitmapSaida.Encode(stream, SKEncodedImageFormat.Png, 100);
+				}
+			}
+
+			using (
+				SKBitmap bitmapEntrada = SKBitmap.Decode("img\\empty\\Gabarito Correto Vazio Cinza.png"),
+				bitmapSaida = new SKBitmap(new SKImageInfo(bitmapEntrada.Width, bitmapEntrada.Height, SKColorType.Gray8))) {
+				
+				unsafe {
+					byte* entrada = (byte*)bitmapEntrada.GetPixels();
+					byte* saida = (byte*)bitmapSaida.GetPixels();
+
+					long pixelsTotais = bitmapEntrada.Width * bitmapEntrada.Height;
+
+
+					for (int i = 0; i < pixelsTotais; i++)
+					{
+						saida[i] = entrada[i];
+					}
+
+					// Limiarização
+					for(int p = 0; p < pixelsTotais; p++)
+					{
+						if(saida[p] > 122)
+							saida[p] = 0;
+						else
+							saida[p] = 255;
+					}
+
+					var formas = Forma.DetectarFormas(saida, bitmapSaida.Width, bitmapSaida.Height, true);
+					int count = 1;
+					int row = 1;
+					foreach (var forma in formas){
+						if ((forma.Altura == 47 || forma.Altura == 48) && (forma.Largura == 47 || forma.Largura == 48))
+						{
+							string answer = "";
+							switch(count){
+								case 1:
+									answer = "A";
+									count++;
+									break;
+								case 2:
+									answer = "B";
+									count++;
+									break;
+								case 3:
+									answer = "C";
+									count++;
+									break;
+								case 4:
+									answer = "D";
+									count++;
+									break;
+								case 5:
+									answer = "E";
+									count = 1;
+									break;
+							}
+
+							slotsAlternativas.Add((x0: forma.X0, y0: forma.Y0, x1: forma.X1, y1: forma.Y1, row, answer));
+							if (count == 1){
+								row++;
+							}
+						}
+					}
+				}
+
+				using (FileStream stream = new FileStream("img\\erosed\\Gabarito Correto Vazio Cinza Limi.png", FileMode.OpenOrCreate, FileAccess.Write)) {
+					bitmapSaida.Encode(stream, SKEncodedImageFormat.Png, 100);
+				}
+			}
+
+			using (
+				SKBitmap bitmapEntrada = SKBitmap.Decode("img\\erosed\\Gabarito Correto Erosed 1.png"),
+				bitmapSaida = new SKBitmap(new SKImageInfo(bitmapEntrada.Width, bitmapEntrada.Height, SKColorType.Gray8))) {
+
+				unsafe {
+					byte* entrada = (byte*)bitmapEntrada.GetPixels();
+					var formas = Forma.DetectarFormas(entrada, bitmapEntrada.Width, bitmapEntrada.Height, true);
+
+					List<(int x0, int y0 , int x1 ,int y1)> quadrados = new List<(int x0, int y0 , int x1 ,int y1)> 
+					{
+						(32, 32, 82, 82),
+						(639, 32, 689, 82),
+						(32, 496, 82, 545),
+						(639, 496, 689, 545),
+						(32, 956, 82, 1009),
+						(639, 956, 689, 1009)
+					};
+
+					int count = 0;
+					for (int i = 0; i < formas.Count(); i++){
+						foreach(var quadrado in quadrados){
+							if(formas[i].FazInterseccao(quadrado.x0, quadrado.y0, quadrado.x1, quadrado.y1))
+								count++;
+						}
+					}
+
+					// Validação dos cantos 
+					if (count == 6) {
+						Console.WriteLine("RESULTADO DO GABARITO:" + "\n------------------------");
+						for (int i = 0; i < formas.Count(); i++){
+							foreach(var alternativa in slotsAlternativas){
+								if(formas[i].FazInterseccao(alternativa.x0, alternativa.y0, alternativa.x1, alternativa.y1)){
+									Console.WriteLine(alternativa.number + ": " + alternativa.answer);
+									break;
+								}
+							}
+						}
+					} else {
+						Console.WriteLine("Validação das hastes está errado");
+					}
 				}
 			}
 		}
