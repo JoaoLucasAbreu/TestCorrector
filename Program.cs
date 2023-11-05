@@ -139,16 +139,29 @@ namespace Projeto {
 					// Validação dos cantos 
 					if (count == 6) {
 						Console.WriteLine("RESULTADO DO GABARITO:" + "\n------------------------");
-						for (int i = 0; i < formas.Count(); i++){
-							foreach(var alternativa in slotsAlternativas){
-								if(formas[i].FazInterseccao(alternativa.x0, alternativa.y0, alternativa.x1, alternativa.y1)){
-									Console.WriteLine(alternativa.number + ": " + alternativa.answer);
+						int row = 0;
+						int c  = 0;
+						foreach(var alternativa in slotsAlternativas){
+							if(row != alternativa.number){
+								if(row != 0 && c == 0){
+									Console.Write("Nenhuma Alternativa");
+								}
+								c = 0;
+								row = alternativa.number;
+								Console.Write("\n" + row + ": ");
+							}
+
+							foreach(var forma in formas){
+								if(forma.FazInterseccao(alternativa.x0, alternativa.y0, alternativa.x1, alternativa.y1)){
+									Console.Write(alternativa.answer + " ");
+									c++;
 									break;
 								}
 							}
 						}
+
 					} else {
-						Console.WriteLine("Validação das hastes está errado");
+						Console.WriteLine("Gabarito Errado");
 					}
 				}
 			}
